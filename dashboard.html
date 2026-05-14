@@ -128,22 +128,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module">
     import { checkAuth } from "/assets/js/auth.js";
-    import { renderLayout, setPageTitle } from "/assets/js/layout.js";
-    import { db } from "/assets/js/firebase-config.js";
+    import { renderLayout, setPageTitle, renderCacheStatus } from "/assets/js/layout.js";
     import { badgeSituacao } from "/assets/js/utils.js";
-    import {
-      collection, query, where, getDocs, orderBy, limit
-    } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+    import { getVagas } from "/assets/js/firestore-cache.js";
+    import { cacheGet } from "/assets/js/cache.js";
 
     const { dados } = await checkAuth("visualizador");
     renderLayout("dashboard", dados);
     setPageTitle("Dashboard");
 
-    // ── Carregar dados ──────────────────────────────────────
-    const vagasRef = collection(db, "vagas");
-    const q = query(vagasRef, where("deleted", "==", false));
-    const snap = await getDocs(q);
-    const vagas = snap.docs.map(d => d.data());
+    // ── Carregar dados (via cache — 0 leituras extras na mesma sessão) ────
+    const foiCacheHit = !!cacheGet("vagas");
+    const vagas = await getVagas();
+    renderCacheStatus(foiCacheHit, ["vagas"]);
 
     // Contadores
     const total      = vagas.length;

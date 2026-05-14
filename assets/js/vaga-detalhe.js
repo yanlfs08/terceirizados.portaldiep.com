@@ -1,9 +1,11 @@
 import { checkAuth } from "./auth.js";
-import { renderLayout, setPageTitle } from "./layout.js";
-import { db } from "./firebase-config.js";
+import { renderLayout, setPageTitle, renderCacheStatus } from "./layout.js";
 import { badgeSituacao, formatarDataHora, showToast } from "./utils.js";
+import { getVagaById, getCargosMap, getEmpresasMap, invalidateVagas } from "./firestore-cache.js";
+import { cacheGet } from "./cache.js";
+import { db } from "./firebase-config.js";
 import {
-  doc, getDoc, getDocs, collection, query,
+  doc, getDocs, collection, query,
   orderBy, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
@@ -31,7 +33,7 @@ const timelineEl = document.getElementById("timeline-eventos");
 const badgeEv    = document.getElementById("badge-eventos");
 
 // ── Helpers ───────────────────────────────────────────────────
-function setVal(id, valor, vazio = false) {
+function setVal(id, valor) {
   const el = document.getElementById(id);
   if (!el) return;
   if (!valor || valor === "—") {
@@ -41,32 +43,27 @@ function setVal(id, valor, vazio = false) {
   }
 }
 
-// ── 1. Carregar dados em paralelo ─────────────────────────────
+// ── 1. Carregar dados via cache (sem leituras extras) ─────────
 let vagaData;
 try {
-  const [vagaSnap, cargosSnap, empresasSnap] = await Promise.all([
-    getDoc(doc(db, "vagas", vagaId)),
-    getDocs(collection(db, "cargos")),
-    getDocs(collection(db, "empresas"))
+  // Verifica cache ANTES de buscar
+  const foiCacheHit = !!(cacheGet("vagas") && cacheGet("cargos") && cacheGet("empresas"));
+
+  // getVagaById lê do cache de vagas se disponível (0 reads adicionais)
+  // getCargosMap e getEmpresasMap idem
+  const [vaga, cargosMap, empresasMap] = await Promise.all([
+    getVagaById(vagaId),
+    getCargosMap(),
+    getEmpresasMap()
   ]);
 
-  if (!vagaSnap.exists()) {
+  if (!vaga) {
     showToast("Vaga não encontrada.", "danger");
     setTimeout(() => window.location.href = "/vagas.html", 2000);
     throw new Error("Vaga não encontrada");
   }
 
-  vagaData = { id: vagaSnap.id, ...vagaSnap.data() };
-
-  // Mapas de lookup
-  const cargosMap   = {};
-  const empresasMap = {};
-  cargosSnap.docs.forEach(d => {
-    const c = d.data();
-    const desc = (c.descricao ?? "").replace(/^[^-]+-\s*/, "").trim().toUpperCase();
-    cargosMap[d.id] = desc || (c.descricao ?? "").toUpperCase();
-  });
-  empresasSnap.docs.forEach(d => { empresasMap[d.id] = (d.data().nome ?? d.id).toUpperCase(); });
+  vagaData = vaga;
 
   // ── 2. Preencher campos ────────────────────────────────────
   document.getElementById("titulo-vaga").textContent = vagaData.codigoVaga ?? "Vaga";
@@ -123,11 +120,9 @@ try {
       btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Inativando...`;
       try {
         const batch = writeBatch(db);
-        // Soft delete
         batch.update(doc(db, "vagas", vagaId), {
           deleted: true, atualizadoEm: serverTimestamp(), atualizadoPor: user.uid
         });
-        // Evento na subcoleção
         batch.set(doc(collection(db, "vagas", vagaId, "eventos")), {
           tipoEvento: "INATIVACAO",
           descricao: `Vaga inativada (soft delete) por ${dados.nome}`,
@@ -135,7 +130,6 @@ try {
           registradoPor: user.uid,
           nomeUsuario: dados.nome
         });
-        // Audit log
         batch.set(doc(collection(db, "audit_log")), {
           usuarioId: user.uid, usuarioEmail: user.email, nomeUsuario: dados.nome,
           acao: "DELETE_VAGA", colecao: "vagas", documentoId: vagaId,
@@ -143,6 +137,10 @@ try {
           timestamp: serverTimestamp()
         });
         await batch.commit();
+
+        // Invalida cache de vagas pois uma foi removida
+        invalidateVagas();
+
         showToast("Vaga inativada com sucesso.", "success");
         setTimeout(() => window.location.href = "/vagas.html", 1500);
       } catch (err) {
@@ -157,6 +155,9 @@ try {
   loadingEl.style.display = "none";
   conteudoEl.style.display = "";
 
+  // Indicador de cache
+  renderCacheStatus(foiCacheHit, ["vagas", "cargos", "empresas"]);
+
 } catch (err) {
   if (!err.message.includes("não encontrada") && !err.message.includes("Sem ID")) {
     loadingEl.innerHTML = `
@@ -165,7 +166,8 @@ try {
   }
 }
 
-// ── 4. Carregar Timeline (independente) ───────────────────────
+// ── 4. Carregar Timeline — sempre do Firestore (dados em tempo real) ──
+// Eventos são uma subcoleção específica da vaga, não faz sentido cachear.
 try {
   const eventosSnap = await getDocs(query(
     collection(db, "vagas", vagaId, "eventos"),

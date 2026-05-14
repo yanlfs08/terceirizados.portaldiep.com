@@ -16,44 +16,46 @@
       font-weight: 700;
       letter-spacing: .1em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: #64748b;
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid #e2e8f0;
     }
     .form-label {
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .05em;
-      color: #94a3b8;
+      color: #64748b;
       margin-bottom: 4px;
     }
     .form-control, .form-select {
-      background: rgba(255,255,255,0.04);
-      border-color: rgba(255,255,255,0.1);
-      color: inherit;
+      background: #ffffff;
+      border-color: #e2e8f0;
+      color: #1e293b;
       font-size: 14px;
     }
     .form-control:focus, .form-select:focus {
-      background: rgba(255,255,255,0.07);
+      background: #ffffff;
       border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-      color: inherit;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+      color: #1e293b;
     }
     .form-control:disabled, .form-control[readonly] {
-      background: rgba(255,255,255,0.02);
-      color: #64748b;
+      background: #f8fafc;
+      color: #94a3b8;
     }
     .form-select option {
-      background: #1e293b;
+      background: #ffffff;
+      color: #1e293b;
     }
     .obs-preview {
-      background: rgba(0,0,0,0.15);
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: 8px;
       padding: 12px;
       font-size: 12px;
-      color: #64748b;
+      color: #475569;
       white-space: pre-wrap;
       max-height: 120px;
       overflow-y: auto;
@@ -62,9 +64,9 @@
     .codigo-preview {
       font-family: monospace;
       font-size: 13px;
-      color: #94a3b8;
-      padding: 6px 10px;
-      background: rgba(0,0,0,0.2);
+      color: #475569;
+      padding: 5px 10px;
+      background: #f1f5f9;
       border-radius: 6px;
       display: inline-block;
     }
@@ -94,12 +96,12 @@
         </div>
 
         <!-- Loading -->
-        <div id="loading-form" class="text-center py-5" style="display:none;">
+        <div id="loading-form" class="text-center py-5">
           <div class="spinner-border text-primary mb-3" role="status"></div>
           <p class="text-muted">Carregando dados...</p>
         </div>
 
-        <form id="form-vaga" novalidate>
+        <form id="form-vaga" novalidate style="display:none;">
           <div class="row g-3">
 
             <!-- Coluna principal -->

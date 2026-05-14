@@ -1,4 +1,5 @@
 import { logout } from "./auth.js";
+import { cacheGet, cacheInvalidateAll } from "./cache.js";
 
 /**
  * Injeta o layout padrão (header + sidebar) na página.
@@ -84,6 +85,7 @@ function renderLayout(paginaAtiva, dadosUsuario) {
     </button>
     <div class="topbar-title" id="topbar-title"></div>
     <div class="topbar-right">
+      <div id="cache-status-badge"></div>
       <span class="badge-perfil badge-perfil--${dadosUsuario.perfil}">
         ${traduzirPerfil(dadosUsuario.perfil)}
       </span>
@@ -128,4 +130,103 @@ function traduzirPerfil(perfil) {
   return mapa[perfil] ?? perfil;
 }
 
-export { renderLayout, setPageTitle };
+/**
+ * Exibe o indicador de cache no topbar.
+ * Deve ser chamado APÓS carregar os dados da página.
+ *
+ * @param {boolean} cacheHit - true se os dados vieram do cache, false se do Firestore
+ * @param {string[]} chavesCacheadas - chaves que estão no cache (ex: ['vagas', 'cargos'])
+ */
+function renderCacheStatus(cacheHit, chavesCacheadas = []) {
+  const container = document.getElementById("cache-status-badge");
+  if (!container) return;
+
+  // Calcula menor TTL restante entre as chaves informadas
+  let menorExpiracao = null;
+  const PREFIX = "sgt_cache_";
+  chavesCacheadas.forEach(k => {
+    try {
+      const raw = sessionStorage.getItem(PREFIX + k);
+      if (!raw) return;
+      const { ts, ttl } = JSON.parse(raw);
+      const restante = Math.round((ts + ttl - Date.now()) / 1000);
+      if (restante > 0 && (menorExpiracao === null || restante < menorExpiracao)) {
+        menorExpiracao = restante;
+      }
+    } catch { /* noop */ }
+  });
+
+  function formatarTempo(seg) {
+    if (seg >= 3600) return `${Math.floor(seg / 3600)}h ${Math.floor((seg % 3600) / 60)}min`;
+    if (seg >= 60)   return `${Math.floor(seg / 60)}min`;
+    return `${seg}s`;
+  }
+
+  if (cacheHit && menorExpiracao !== null) {
+    // Dados vieram do cache — exibe badge verde com tooltip e botão de atualização
+    container.innerHTML = `
+      <div class="cache-badge cache-badge--hit" id="cache-badge-wrapper">
+        <i class="bi bi-lightning-charge-fill"></i>
+        <span class="cache-badge-text">Cache ativo</span>
+        <span class="cache-badge-expiry">expira em ${formatarTempo(menorExpiracao)}</span>
+        <button class="cache-badge-refresh" id="btn-cache-refresh" title="Forçar atualização dos dados">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="cache-tooltip" id="cache-tooltip" style="display:none;">
+        <div class="cache-tooltip-title">
+          <i class="bi bi-shield-check text-success me-1"></i>
+          Dados carregados do cache local
+        </div>
+        <p class="cache-tooltip-desc">
+          O sistema reutiliza dados já carregados nesta sessão para <strong>economizar leituras</strong>
+          no banco de dados. O plano gratuito do Firebase permite <strong>50.000 leituras/dia</strong>
+          — o cache reduz o consumo em até <strong>95%</strong> durante a navegação.
+        </p>
+        <p class="cache-tooltip-desc mb-0">
+          Empresas e cargos ficam em cache por <strong>1 hora</strong>.
+          Vagas ficam em cache por <strong>3 minutos</strong> e são atualizadas automaticamente após edições.
+        </p>
+        <button class="btn btn-sm btn-outline-primary w-100 mt-2" id="btn-cache-refresh-full">
+          <i class="bi bi-arrow-clockwise me-1"></i>Forçar atualização agora
+        </button>
+      </div>`;
+  } else {
+    // Dados vieram do Firestore (leitura fresca)
+    container.innerHTML = `
+      <div class="cache-badge cache-badge--miss">
+        <i class="bi bi-cloud-download-fill"></i>
+        <span class="cache-badge-text">Dados frescos</span>
+      </div>`;
+    // Esconde após 4 segundos
+    setTimeout(() => { container.innerHTML = ""; }, 4000);
+  }
+
+  // Eventos do tooltip e botão de refresh
+  setTimeout(() => {
+    const badge  = document.getElementById("cache-badge-wrapper");
+    const tooltip = document.getElementById("cache-tooltip");
+    const btnRefresh = document.getElementById("btn-cache-refresh");
+    const btnRefreshFull = document.getElementById("btn-cache-refresh-full");
+
+    if (badge && tooltip) {
+      badge.addEventListener("click", (e) => {
+        if (e.target.closest("#btn-cache-refresh")) return;
+        tooltip.style.display = tooltip.style.display === "none" ? "block" : "none";
+      });
+      document.addEventListener("click", (e) => {
+        if (!badge.contains(e.target)) tooltip.style.display = "none";
+      }, { once: false });
+    }
+
+    function refreshAll() {
+      cacheInvalidateAll();
+      window.location.reload();
+    }
+
+    if (btnRefresh)     btnRefresh.addEventListener("click", refreshAll);
+    if (btnRefreshFull) btnRefreshFull.addEventListener("click", refreshAll);
+  }, 50);
+}
+
+export { renderLayout, setPageTitle, renderCacheStatus };

@@ -65,6 +65,20 @@ if (authResult) {
     return key.trim().toUpperCase();
   }
 
+  // Converte string para float, retornando 0 se não for um número válido
+  function safeFloat(str) {
+    if (!str || str.trim() === '' || str.trim() === '-') return 0;
+    const n = parseFloat(str.trim().replace(/,/g, '.'));
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Converte string para int, retornando null se vazio ou não numérico
+  function safeInt(str) {
+    if (!str || str.trim() === '') return null;
+    const n = parseInt(str.trim(), 10);
+    return isNaN(n) ? null : n;
+  }
+
   // ────────────────────────────────────────────────────────
   // 2. Leitura da Planilha com SheetJS
   // ────────────────────────────────────────────────────────
@@ -137,12 +151,12 @@ if (authResult) {
         empresaId: empresaId,
         codigo: codigoCargo,
         descricao: descricaoCargo,
-        salario: parseFloat(getVal(["SALARIO", "SALÁRIO"]).replace(/,/g, '.') || 0),
-        valeAlimentacao: parseFloat(getVal(["VALE", "ALIMENTAÇÃO", "ALIMENTACAO"]).replace(/,/g, '.') || 0),
-        custoPostoMensal: parseFloat(getVal(["CUSTO"]).replace(/,/g, '.') || 0),
+        salario: safeFloat(getVal(["SALARIO", "SALÁRIO"])),
+        valeAlimentacao: safeFloat(getVal(["VALE", "ALIMENTAÇÃO", "ALIMENTACAO"])),
+        custoPostoMensal: safeFloat(getVal(["CUSTO"])),
         cargaHorariaDiaria: getVal(["DIÁRIA", "DIARIA"]),
         cargaHorariaSemanal: getVal(["SEMANAL"]),
-        quantitativoPrevisto: parseInt(getVal(["QUANTITATIVO", "PREVISTO"]) || 0)
+        quantitativoPrevisto: safeInt(getVal(["QUANTITATIVO", "PREVISTO"])) ?? 0
       });
     });
   }
@@ -176,7 +190,7 @@ if (authResult) {
         codigoVaga: codigoVaga,
         empresaId: empresaId,
         cargoId: cargoId,
-        numeroSequencial: parseInt(getVal(["Nº", "NUMERO SEQUENCIAL", "SEQ", "NUMERO"]) || 0),
+        numeroSequencial: safeInt(getVal(["Nº", "NUMERO SEQUENCIAL", "SEQ", "NUMERO"])),
         situacao: situacao.toUpperCase(),
         matriculaColaborador: getVal(["MATRÍCULA", "MATRICULA"]),
         nomeColaborador: getVal(["NOME"]),

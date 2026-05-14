@@ -1,13 +1,8 @@
 import { checkAuth } from "./auth.js";
-import { renderLayout, setPageTitle } from "./layout.js";
-import { db } from "./firebase-config.js";
+import { renderLayout, setPageTitle, renderCacheStatus } from "./layout.js";
 import { badgeSituacao, showToast } from "./utils.js";
-import {
-  collection, query, where, getDocs
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-// Mapa cargoId → descrição legível (ex: "PORTEIRO 12X36 DIURNO C/ INSALUBRIDADE")
-let cargosMap = {};
+import { getVagas, getCargosMap } from "./firestore-cache.js";
+import { cacheGet } from "./cache.js";
 
 // ── Auth ──────────────────────────────────────────────────────
 const authResult = await checkAuth("visualizador");
@@ -19,8 +14,8 @@ setPageTitle("Lista de Vagas");
 
 // ── Estado ─────────────────────────────────────────────────────
 const POR_PAGINA = 50;
-let todasVagas   = [];   // dados brutos do Firestore
-let vagasFiltradas = []; // após aplicar filtros em memória
+let todasVagas   = [];
+let vagasFiltradas = [];
 let paginaAtual  = 0;
 
 // ── Elementos DOM ───────────────────────────────────────────────
@@ -39,27 +34,21 @@ const filtroBusca     = document.getElementById("filtro-busca");
 const filtroEmpresa   = document.getElementById("filtro-empresa");
 const filtroSituacao  = document.getElementById("filtro-situacao");
 
-// ── 1. Carregar vagas + cargos em paralelo ──────────────────────
+// ── 1. Carregar vagas + cargos (via cache) ──────────────────────────
 try {
-  const [snapVagas, snapCargos] = await Promise.all([
-    getDocs(query(collection(db, "vagas"), where("deleted", "==", false))),
-    getDocs(collection(db, "cargos"))
+  // Verifica se os dados já estão em cache ANTES de buscar
+  const foiCacheHit = !!(cacheGet("vagas") && cacheGet("cargos"));
+  const [vagas, cargosMap] = await Promise.all([
+    getVagas(),
+    getCargosMap()
   ]);
 
-  // Monta mapa cargoId → descrição (ignora o prefixo antes do hífen)
-  snapCargos.docs.forEach(d => {
-    const c = d.data();
-    // descricao já vem sem o prefixo (gravado assim pelo importar.js)
-    // mas garante remoção do prefixo "CARGO XX - " caso venha junto
-    const desc = (c.descricao ?? "").replace(/^[^-]+-\s*/, "").trim().toUpperCase();
-    cargosMap[d.id] = desc || (c.descricao ?? "").toUpperCase();
-  });
+  todasVagas = vagas;
 
-  todasVagas = snapVagas.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (a.codigoVaga ?? "").localeCompare(b.codigoVaga ?? "", "pt-BR"));
+  // Fechar mapa de cargos para uso no render
+  window._cargosMap = cargosMap;
 
-  // Popular select de Empresas
+  // Popular select de Empresas a partir dos dados já carregados
   const empresasUnicas = [...new Set(
     todasVagas.map(v => v.empresaId).filter(Boolean)
   )].sort();
@@ -87,7 +76,9 @@ try {
       </a>`;
   }
 
-  // Aplicar filtros iniciais (nenhum)
+  // Exibe indicador de cache no topbar
+  renderCacheStatus(foiCacheHit, ["vagas", "cargos"]);
+
   aplicarFiltros();
 
 } catch (err) {
@@ -103,11 +94,8 @@ function aplicarFiltros() {
   const situacaoFiltro = filtroSituacao.value;
 
   vagasFiltradas = todasVagas.filter(v => {
-    // Filtro empresa
     if (empresaFiltro && v.empresaId !== empresaFiltro) return false;
-    // Filtro situacao
     if (situacaoFiltro && v.situacao !== situacaoFiltro) return false;
-    // Busca textual
     if (textoBusca) {
       const haystack = [
         v.codigoVaga,
@@ -123,7 +111,6 @@ function aplicarFiltros() {
     return true;
   });
 
-  // Atualizar badge
   badgeTotal.textContent = textoBusca || empresaFiltro || situacaoFiltro
     ? `${vagasFiltradas.length} de ${todasVagas.length} vagas`
     : `${todasVagas.length} vagas`;
@@ -134,6 +121,7 @@ function aplicarFiltros() {
 
 // ── 3. Renderizar Página Atual ───────────────────────────────────
 function renderPagina() {
+  const cargosMap = window._cargosMap ?? {};
   const total = vagasFiltradas.length;
   const inicio = paginaAtual * POR_PAGINA;
   const fim = Math.min(inicio + POR_PAGINA, total);
@@ -152,7 +140,6 @@ function renderPagina() {
   semResultados.style.display = "none";
   paginacaoFooter.style.display = "";
 
-  // Renderizar linhas
   tbody.innerHTML = paginaItems.map(v => {
     const badgeClass = badgeSituacao(v.situacao);
     const codigo = highlight(v.codigoVaga ?? "—", textoBusca);
@@ -160,7 +147,6 @@ function renderPagina() {
     const matricula = highlight(v.matriculaColaborador || "—", textoBusca);
     const unidade = highlight(v.unidadeSigla || "—", textoBusca);
     const empresa = (v.empresaId || "—").toUpperCase();
-    // Usa a descrição legível do mapa; fallback para o próprio cargoId
     const cargo = cargosMap[v.cargoId] || (v.cargoId || "—").toUpperCase();
 
     return `
@@ -189,7 +175,6 @@ function renderPagina() {
       </tr>`;
   }).join("");
 
-  // Atualizar paginação
   const totalPaginas = Math.ceil(total / POR_PAGINA);
   paginacaoInfo.textContent = `Exibindo ${inicio + 1}–${fim} de ${total} vagas`;
   btnAnterior.disabled = paginaAtual === 0;
@@ -250,7 +235,7 @@ btnExportar.addEventListener("click", () => {
     v.observacoes ?? ""
   ].map(cel => `"${String(cel).replace(/"/g, '""')}"`).join(";"));
 
-  const bom = "\uFEFF"; // BOM para Excel reconhecer UTF-8
+  const bom = "\uFEFF";
   const csv = bom + [cabecalho.map(c => `"${c}"`).join(";"), ...linhas].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
