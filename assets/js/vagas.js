@@ -13,6 +13,7 @@ let cargosMap = {};
 const authResult = await checkAuth("visualizador");
 if (!authResult) throw new Error("Não autenticado");
 const { dados } = authResult;
+const isEditor = ["admin", "editor"].includes(dados.perfil);
 renderLayout("vagas", dados);
 setPageTitle("Lista de Vagas");
 
@@ -77,6 +78,14 @@ try {
 
   badgeTotal.textContent = `${todasVagas.length} vagas`;
   badgeTotal.style.opacity = "1";
+
+  // Botão Nova Vaga (apenas editor/admin)
+  if (isEditor) {
+    document.getElementById("btn-nova-vaga-container").innerHTML = `
+      <a href="/vaga-form.html" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Nova Vaga
+      </a>`;
+  }
 
   // Aplicar filtros iniciais (nenhum)
   aplicarFiltros();
@@ -168,9 +177,14 @@ function renderPagina() {
         <td><code style="font-size:11px;">${matricula}</code></td>
         <td>${unidade}</td>
         <td>
-          <a href="/vaga-detalhe.html?id=${v.id}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
-            <i class="bi bi-eye"></i>
-          </a>
+          <div class="d-flex gap-1">
+            <a href="/vaga-detalhe.html?id=${v.id}" class="btn btn-sm btn-outline-secondary" title="Ver detalhes">
+              <i class="bi bi-eye"></i>
+            </a>
+            ${isEditor ? `<a href="/vaga-form.html?id=${v.id}" class="btn btn-sm btn-outline-primary" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </a>` : ''}
+          </div>
         </td>
       </tr>`;
   }).join("");

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhe da Vaga — SGT DIEP</title>
+  <meta name="description" content="Visualização detalhada e histórico de eventos de uma vaga — SGT DIEP">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    /* ── Seções de dados ────────────── */
+    .detalhe-secao-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .detalhe-campo {
+      margin-bottom: 14px;
+    }
+    .detalhe-campo label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .detalhe-campo .valor {
+      font-size: 14px;
+      font-weight: 500;
+      color: inherit;
+    }
+    .detalhe-campo .valor.vazio {
+      color: #475569;
+      font-style: italic;
+      font-weight: 400;
+    }
+    .obs-box {
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #94a3b8;
+    }
+
+    /* ── Timeline ───────────────────── */
+    .timeline {
+      position: relative;
+      padding-left: 28px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255,255,255,0.07);
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -24px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .timeline-dot i {
+      font-size: 7px;
+      color: #fff;
+    }
+    .dot-criacao       { background: #22c55e; }
+    .dot-edicao        { background: #3b82f6; }
+    .dot-status        { background: #f59e0b; }
+    .dot-substituicao  { background: #ef4444; }
+    .dot-outros        { background: #94a3b8; }
+
+    .timeline-data {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .timeline-desc {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .timeline-usuario {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .timeline-empty {
+      text-align: center;
+      color: #475569;
+      padding: 30px 0;
+      font-size: 13px;
+    }
+
+    /* ── Modal ──────────────────────── */
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .modal-header { border-bottom-color: rgba(255,255,255,0.08); }
+    .modal-footer { border-top-color: rgba(255,255,255,0.08); }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+
+      <main class="main-content">
+
+        <!-- Cabeçalho da página -->
+        <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <a href="/vagas.html" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+              </a>
+              <h1 id="titulo-vaga" class="mb-0">Detalhe da Vaga</h1>
+            </div>
+            <p id="subtitulo-vaga" class="ms-5">Carregando...</p>
+          </div>
+          <div class="d-flex gap-2 flex-wrap" id="acoes-header">
+            <!-- Botões injetados pelo JS conforme perfil -->
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading-detalhe" class="text-center py-5">
+          <div class="spinner-border text-primary mb-3" role="status"></div>
+          <p class="text-muted">Carregando dados da vaga...</p>
+        </div>
+
+        <!-- Conteúdo (oculto até carregar) -->
+        <div id="conteudo-detalhe" style="display:none;">
+          <div class="row g-3">
+
+            <!-- Coluna principal -->
+            <div class="col-12 col-lg-7">
+
+              <!-- Identificação -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="detalhe-secao-label"><i class="bi bi-card-list me-1"></i>Identificação</div>
+                  <div class="row g-0">
+                    <div class="col-6">
+                      <div class="detalhe-campo">
+                        <label>Código da Vaga</label>
+                        <div class="valor" id="d-codigoVaga" style="font-family:monospace;"></div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="detalhe-campo">
+                        <label>N° Sequencial</label>
+                        <div class="valor" id="d-numSeq"></div>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="detalhe-campo">
+                        <label>Situação</label>
+                        <div id="d-situacao"></div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <div class="detalhe-campo">
+                        <label>Empresa</label>
+                        <div class="valor" id="d-empresa"></div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <div class="detalhe-campo">
+                        <label>Cargo</label>
+                        <div class="valor" id="d-cargo"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Colaborador -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="detalhe-secao-label"><i class="bi bi-person-fill me-1"></i>Colaborador</div>
+                  <div class="row g-0">
+                    <div class="col-12 col-sm-8">
+                      <div class="detalhe-campo">
+                        <label>Nome</label>
+                        <div class="valor" id="d-nome"></div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <div class="detalhe-campo">
+                        <label>Matrícula</label>
+                        <div class="valor" id="d-matricula" style="font-family:monospace;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lotação -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="detalhe-secao-label"><i class="bi bi-building me-1"></i>Lotação</div>
+                  <div class="detalhe-campo">
+                    <label>Hierarquia</label>
+                    <div class="valor" id="d-hierarquia" style="font-size:12px;"></div>
+                  </div>
+                  <div class="row g-0">
+                    <div class="col-4">
+                      <div class="detalhe-campo">
+                        <label>Sigla</label>
+                        <div class="valor" id="d-sigla"></div>
+                      </div>
+                    </div>
+                    <div class="col-8">
+                      <div class="detalhe-campo">
+                        <label>Unidade</label>
+                        <div class="valor" id="d-unidade" style="font-size:12px;"></div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <div class="detalhe-campo">
+                        <label>Localidade</label>
+                        <div class="valor" id="d-localidade"></div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <div class="detalhe-campo">
+                        <label>Responsável</label>
+                        <div class="valor" id="d-responsavel" style="font-size:12px;"></div>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="detalhe-campo">
+                        <label>E-mail da Unidade</label>
+                        <div class="valor" id="d-email"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Observações -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="detalhe-secao-label"><i class="bi bi-journal-text me-1"></i>Observações / Histórico Textual</div>
+                  <div class="obs-box" id="d-observacoes">—</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Coluna de timeline -->
+            <div class="col-12 col-lg-5">
+              <div class="card" style="position:sticky; top:80px;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-clock-history text-primary me-1"></i>Histórico de Eventos</span>
+                  <span class="badge bg-secondary" id="badge-eventos">0</span>
+                </div>
+                <div class="card-body" style="max-height:600px; overflow-y:auto;">
+                  <div class="timeline" id="timeline-eventos">
+                    <div class="timeline-empty">
+                      <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                      <br>Carregando...
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal soft delete -->
+  <div class="modal fade" id="modal-inativar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title text-danger"><i class="bi bi-trash3-fill me-2"></i>Inativar Vaga</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Tem certeza que deseja inativar a vaga <strong id="modal-codigo-vaga"></strong>?</p>
+          <p class="text-muted small">A vaga será marcada como excluída e não aparecerá mais na listagem. Esta ação pode ser revertida pelo console Firebase.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-danger" id="btn-confirmar-inativar">
+            <i class="bi bi-trash3 me-1"></i>Confirmar Inativação
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/assets/js/vaga-detalhe.js"></script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vaga — SGT DIEP</title>
+  <meta name="description" content="Cadastro e edição de vaga de terceirizado — SGT DIEP">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    .form-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .form-control, .form-select {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.1);
+      color: inherit;
+      font-size: 14px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: rgba(255,255,255,0.07);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+      color: inherit;
+    }
+    .form-control:disabled, .form-control[readonly] {
+      background: rgba(255,255,255,0.02);
+      color: #64748b;
+    }
+    .form-select option {
+      background: #1e293b;
+    }
+    .obs-preview {
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      color: #64748b;
+      white-space: pre-wrap;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .codigo-preview {
+      font-family: monospace;
+      font-size: 13px;
+      color: #94a3b8;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .required-star { color: #ef4444; }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+
+      <main class="main-content">
+
+        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <a href="/vagas.html" class="btn btn-sm btn-outline-secondary" id="btn-voltar">
+                <i class="bi bi-arrow-left"></i>
+              </a>
+              <h1 class="mb-0" id="titulo-form">Nova Vaga</h1>
+            </div>
+            <p class="ms-5 mb-0" id="subtitulo-form">Preencha os campos abaixo</p>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading-form" class="text-center py-5" style="display:none;">
+          <div class="spinner-border text-primary mb-3" role="status"></div>
+          <p class="text-muted">Carregando dados...</p>
+        </div>
+
+        <form id="form-vaga" novalidate>
+          <div class="row g-3">
+
+            <!-- Coluna principal -->
+            <div class="col-12 col-lg-8">
+
+              <!-- Identificação -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="form-section-label"><i class="bi bi-card-list me-1"></i>Identificação</div>
+                  <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                      <label class="form-label" for="f-empresa">Empresa <span class="required-star">*</span></label>
+                      <select id="f-empresa" class="form-select" required>
+                        <option value="">Selecione a empresa...</option>
+                      </select>
+                      <div class="invalid-feedback">Selecione a empresa.</div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <label class="form-label" for="f-cargo">Cargo <span class="required-star">*</span></label>
+                      <select id="f-cargo" class="form-select" required disabled>
+                        <option value="">Selecione a empresa primeiro</option>
+                      </select>
+                      <div class="invalid-feedback">Selecione o cargo.</div>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <label class="form-label" for="f-seq">N° Sequencial</label>
+                      <input type="number" id="f-seq" class="form-control" min="1" placeholder="Ex: 1">
+                    </div>
+                    <div class="col-12 col-sm-8">
+                      <label class="form-label" for="f-codigo">Código da Vaga <span class="required-star">*</span></label>
+                      <input type="text" id="f-codigo" class="form-control" required placeholder="Ex: FGR095.CARGO 03-1">
+                      <div class="form-text" id="codigo-preview-text"></div>
+                      <div class="invalid-feedback">Informe o código da vaga.</div>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label" for="f-situacao">Situação <span class="required-star">*</span></label>
+                      <select id="f-situacao" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        <option value="ATIVA">Ativa</option>
+                        <option value="AGUARDANDO SUBSTITUIÇÃO">Aguardando Substituição</option>
+                        <option value="EM CONTRATAÇÃO">Em Contratação</option>
+                        <option value="LICENÇA">Licença</option>
+                        <option value="EXTINÇÃO DE VAGA">Extinção de Vaga</option>
+                        <option value="RESERVADA">Reservada</option>
+                        <option value="LIVRE">Livre</option>
+                        <option value="UTILIZADA P/ ADITIVO">Utilizada p/ Aditivo</option>
+                      </select>
+                      <div class="invalid-feedback">Selecione a situação.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Colaborador -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="form-section-label"><i class="bi bi-person-fill me-1"></i>Colaborador</div>
+                  <div class="row g-3">
+                    <div class="col-12 col-sm-8">
+                      <label class="form-label" for="f-nome">Nome</label>
+                      <input type="text" id="f-nome" class="form-control" placeholder="Nome completo">
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <label class="form-label" for="f-matricula">Matrícula</label>
+                      <input type="text" id="f-matricula" class="form-control" placeholder="Ex: 3824-5">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lotação -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="form-section-label"><i class="bi bi-building me-1"></i>Lotação</div>
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label" for="f-hierarquia">Hierarquia</label>
+                      <input type="text" id="f-hierarquia" class="form-control" placeholder="Ex: SMSA | SUOGF | DLOS | GCOSE">
+                    </div>
+                    <div class="col-4">
+                      <label class="form-label" for="f-sigla">Sigla da Unidade</label>
+                      <input type="text" id="f-sigla" class="form-control" placeholder="Ex: GCOSE">
+                    </div>
+                    <div class="col-8">
+                      <label class="form-label" for="f-unidade">Nome Completo da Unidade</label>
+                      <input type="text" id="f-unidade" class="form-control" placeholder="Ex: Gerência de Contratação...">
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <label class="form-label" for="f-localidade">Localidade</label>
+                      <select id="f-localidade" class="form-select">
+                        <option value="">Selecione...</option>
+                        <option value="NÍVEL CENTRAL">Nível Central</option>
+                        <option value="BARREIRO">Barreiro</option>
+                        <option value="CENTRO-SUL">Centro-Sul</option>
+                        <option value="LESTE">Leste</option>
+                        <option value="NORDESTE">Nordeste</option>
+                        <option value="NORTE">Norte</option>
+                        <option value="NOROESTE">Noroeste</option>
+                        <option value="OESTE">Oeste</option>
+                        <option value="PAMPULHA">Pampulha</option>
+                        <option value="VENDA NOVA">Venda Nova</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                      <label class="form-label" for="f-responsavel">Responsável</label>
+                      <input type="text" id="f-responsavel" class="form-control" placeholder="Nome do gestor">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label" for="f-email">E-mail da Unidade</label>
+                      <input type="email" id="f-email" class="form-control" placeholder="email@pbh.gov.br">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Coluna lateral -->
+            <div class="col-12 col-lg-4">
+
+              <!-- Observações -->
+              <div class="card mb-3" style="position:sticky; top:80px;">
+                <div class="card-body">
+                  <div class="form-section-label"><i class="bi bi-journal-plus me-1"></i>Acrescentar Observação</div>
+                  <p class="text-muted small mb-3">
+                    O texto abaixo será <strong>adicionado</strong> ao histórico com data e seu nome. O histórico anterior é preservado.
+                  </p>
+
+                  <!-- Histórico anterior (somente leitura) -->
+                  <div id="obs-historico-wrapper" style="display:none; margin-bottom:12px;">
+                    <label class="form-label">Histórico anterior</label>
+                    <div class="obs-preview" id="obs-historico"></div>
+                  </div>
+
+                  <label class="form-label" for="f-obs-nova">Nova observação</label>
+                  <textarea id="f-obs-nova" class="form-control" rows="6"
+                    placeholder="Ex: 15/07/25 - Colaborador substituído por..." style="resize:vertical;"></textarea>
+                  <div class="form-text mt-1">
+                    Será salvo como: <span class="codigo-preview" id="preview-obs-data">DD/MM/AA - [seu texto]</span>
+                  </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="card-footer d-flex gap-2 justify-content-end">
+                  <button type="button" class="btn btn-outline-secondary" id="btn-cancelar">Cancelar</button>
+                  <button type="submit" class="btn btn-primary" id="btn-salvar">
+                    <i class="bi bi-floppy-fill me-1"></i>Salvar
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </form>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/assets/js/vaga-form.js"></script>
+</body>
+</html>
