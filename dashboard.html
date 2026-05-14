@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — SGT DIEP</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+</head>
+<body>
+
+  <div class="app-shell">
+    <!-- Sidebar injetada pelo layout.js -->
+    <div id="layout-sidebar"></div>
+
+    <div class="main-wrapper">
+      <!-- Topbar injetada pelo layout.js -->
+      <div id="layout-header"></div>
+
+      <main class="main-content">
+        <div class="page-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Visão geral do sistema de terceirizados</p>
+          </div>
+        </div>
+
+        <!-- Cards de estatísticas -->
+        <div class="row g-3 mb-4" id="stat-cards">
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--blue"><i class="bi bi-card-list"></i></div>
+              <div>
+                <div class="stat-value" id="stat-total">—</div>
+                <div class="stat-label">Total de Vagas</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--green"><i class="bi bi-check-circle-fill"></i></div>
+              <div>
+                <div class="stat-value" id="stat-ativas">—</div>
+                <div class="stat-label">Vagas Ativas</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--yellow"><i class="bi bi-clock-fill"></i></div>
+              <div>
+                <div class="stat-value" id="stat-aguardando">—</div>
+                <div class="stat-label">Aguardando Substituição</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--red"><i class="bi bi-person-fill-add"></i></div>
+              <div>
+                <div class="stat-value" id="stat-contratando">—</div>
+                <div class="stat-label">Em Contratação</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-lg-5">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-pie-chart-fill text-primary"></i> Distribuição por Situação
+              </div>
+              <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="chart-situacao" style="max-height:260px;"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-bar-chart-fill text-primary"></i> Vagas por Empresa
+              </div>
+              <div class="card-body d-flex align-items-center">
+                <canvas id="chart-empresa" style="max-height:260px; width:100%;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de alertas -->
+        <div class="card">
+          <div class="card-header">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i> Vagas que Requerem Atenção
+          </div>
+          <div class="table-wrapper" style="border-radius:0 0 12px 12px; border:none;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Colaborador</th>
+                  <th>Cargo</th>
+                  <th>Unidade</th>
+                  <th>Situação</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tabela-alertas">
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Carregando...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module">
+    import { checkAuth } from "/assets/js/auth.js";
+    import { renderLayout, setPageTitle } from "/assets/js/layout.js";
+    import { db } from "/assets/js/firebase-config.js";
+    import { badgeSituacao } from "/assets/js/utils.js";
+    import {
+      collection, query, where, getDocs, orderBy, limit
+    } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+    const { dados } = await checkAuth("visualizador");
+    renderLayout("dashboard", dados);
+    setPageTitle("Dashboard");
+
+    // ── Carregar dados ──────────────────────────────────────
+    const vagasRef = collection(db, "vagas");
+    const q = query(vagasRef, where("deleted", "==", false));
+    const snap = await getDocs(q);
+    const vagas = snap.docs.map(d => d.data());
+
+    // Contadores
+    const total      = vagas.length;
+    const ativas     = vagas.filter(v => v.situacao === "ATIVA").length;
+    const aguardando = vagas.filter(v => v.situacao === "AGUARDANDO SUBSTITUIÇÃO").length;
+    const contrat    = vagas.filter(v => v.situacao === "EM CONTRATAÇÃO").length;
+
+    document.getElementById("stat-total").textContent      = total.toLocaleString("pt-BR");
+    document.getElementById("stat-ativas").textContent     = ativas.toLocaleString("pt-BR");
+    document.getElementById("stat-aguardando").textContent = aguardando.toLocaleString("pt-BR");
+    document.getElementById("stat-contratando").textContent = contrat.toLocaleString("pt-BR");
+
+    // ── Gráfico de situação ─────────────────────────────────
+    const situacoes = {};
+    vagas.forEach(v => { situacoes[v.situacao] = (situacoes[v.situacao] ?? 0) + 1; });
+
+    const coresSituacao = {
+      "ATIVA":                   "#22c55e",
+      "EXTINÇÃO DE VAGA":        "#ef4444",
+      "AGUARDANDO SUBSTITUIÇÃO": "#f59e0b",
+      "EM CONTRATAÇÃO":          "#3b82f6",
+      "LICENÇA":                 "#f97316",
+      "RESERVADA":               "#94a3b8",
+      "LIVRE":                   "#cbd5e1",
+      "UTILIZADA P/ ADITIVO":    "#e2e8f0"
+    };
+
+    new Chart(document.getElementById("chart-situacao"), {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(situacoes),
+        datasets: [{
+          data: Object.values(situacoes),
+          backgroundColor: Object.keys(situacoes).map(s => coresSituacao[s] ?? "#94a3b8"),
+          borderWidth: 2,
+          borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "bottom", labels: { font: { family: "Sora", size: 11 }, padding: 14 } }
+        },
+        cutout: "60%"
+      }
+    });
+
+    // ── Gráfico por empresa ─────────────────────────────────
+    const empresas = {};
+    vagas.forEach(v => {
+      if (v.empresaId) empresas[v.empresaId.toUpperCase()] = (empresas[v.empresaId.toUpperCase()] ?? 0) + 1;
+    });
+
+    new Chart(document.getElementById("chart-empresa"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(empresas),
+        datasets: [{
+          label: "Vagas",
+          data: Object.values(empresas),
+          backgroundColor: ["#3b82f6", "#6366f1", "#8b5cf6"],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { family: "Sora", size: 11 } } },
+          x: { ticks: { font: { family: "Sora", size: 11 } } }
+        }
+      }
+    });
+
+    // ── Tabela de alertas ───────────────────────────────────
+    const statusCriticos = ["AGUARDANDO SUBSTITUIÇÃO", "EM CONTRATAÇÃO", "LICENÇA"];
+    const alertas = vagas
+      .filter(v => statusCriticos.includes(v.situacao))
+      .slice(0, 20);
+
+    const tbody = document.getElementById("tabela-alertas");
+
+    if (alertas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma vaga crítica no momento.</td></tr>`;
+    } else {
+      tbody.innerHTML = alertas.map(v => `
+        <tr>
+          <td><code style="font-size:12px;">${v.codigoVaga ?? "—"}</code></td>
+          <td>${v.nomeColaborador || "<span class='text-muted'>—</span>"}</td>
+          <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.cargoId?.toUpperCase() ?? "—"}</td>
+          <td>${v.unidadeSigla ?? "—"}</td>
+          <td><span class="badge bg-${badgeSituacao(v.situacao)}">${v.situacao}</span></td>
+          <td>
+            <a href="/vaga-detalhe.html?id=${v.id ?? ''}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>`).join("");
+    }
+  </script>
+</body>
+</html>

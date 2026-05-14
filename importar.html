@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importar Planilha — SGT DIEP</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    .upload-zone {
+      border: 2px dashed rgba(59, 130, 246, 0.4);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      background: rgba(59, 130, 246, 0.05);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .upload-icon {
+      font-size: 48px;
+      color: #3b82f6;
+      margin-bottom: 16px;
+    }
+    .preview-container {
+      display: none;
+    }
+    .progress-container {
+      display: none;
+    }
+    .log-container {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .log-success { color: #22c55e; }
+    .log-error { color: #ef4444; }
+    .log-info { color: #3b82f6; }
+    .log-warning { color: #f59e0b; }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+
+      <main class="main-content">
+        <div class="page-header d-flex justify-content-between align-items-center">
+          <div>
+            <h1>Importar Planilha</h1>
+            <p>Faça o upload do arquivo Excel contendo as vagas e cargos</p>
+          </div>
+        </div>
+
+        <div class="card mb-4" id="upload-card">
+          <div class="card-body">
+            <div class="upload-zone" id="upload-zone">
+              <i class="bi bi-cloud-arrow-up-fill upload-icon"></i>
+              <h5>Clique ou arraste a planilha (.xlsx) aqui</h5>
+              <p class="text-muted mb-0">Certifique-se de usar o modelo padrão com as abas principais (Vagas) e "Cargos".</p>
+              <input type="file" id="file-input" accept=".xlsx, .xls" style="display: none;">
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4 preview-container" id="preview-container">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-eye-fill text-primary"></i> Preview dos Dados (10 primeiros registros)</span>
+            <span class="badge bg-primary" id="total-vagas-badge">0 Vagas detectadas</span>
+          </div>
+          <div class="table-wrapper" style="border-radius:0 0 12px 12px; border:none; max-height: 400px; overflow-y: auto;">
+            <table class="table table-hover table-sm" style="font-size: 13px;">
+              <thead id="preview-head">
+                <!-- Colunas dinâmicas -->
+              </thead>
+              <tbody id="preview-body">
+                <!-- Linhas dinâmicas -->
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-secondary" id="btn-cancelar">Cancelar</button>
+            <button class="btn btn-primary" id="btn-importar">
+              <i class="bi bi-play-fill"></i> Iniciar Importação
+            </button>
+          </div>
+        </div>
+
+        <div class="card mb-4 progress-container" id="progress-container">
+          <div class="card-header">
+            <i class="bi bi-gear-fill text-primary"></i> Progresso da Importação
+          </div>
+          <div class="card-body">
+            <h5 id="progress-status" class="mb-3">Processando...</h5>
+            <div class="progress mb-3" style="height: 20px;">
+              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            
+            <div class="row text-center mb-3">
+              <div class="col-3">
+                <div class="text-muted small">Total Vagas</div>
+                <div class="fs-5 fw-bold" id="prog-total">0</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Processadas</div>
+                <div class="fs-5 fw-bold text-primary" id="prog-atual">0</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Erros</div>
+                <div class="fs-5 fw-bold text-danger" id="prog-erros">0</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Cargos/Empres.</div>
+                <div class="fs-5 fw-bold text-success" id="prog-cargos">0</div>
+              </div>
+            </div>
+
+            <div class="log-container" id="log-container">
+              <!-- Logs vão aqui -->
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-end" id="btn-voltar-container" style="display: none !important;">
+            <a href="/dashboard.html" class="btn btn-primary">Ir para Dashboard</a>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script type="module" src="/assets/js/importar.js"></script>
+</body>
+</html>
