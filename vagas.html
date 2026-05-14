@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Vagas — SGT DIEP</title>
+  <meta name="description" content="Listagem completa e filtrável de todas as vagas de terceirizados — SGT DIEP">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    /* ── Filtros ─────────────────────────── */
+    .filtros-card {
+      background: var(--surface-2, rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .filtros-card .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted, #94a3b8);
+      margin-bottom: 4px;
+    }
+    .filtros-card .form-control,
+    .filtros-card .form-select {
+      font-size: 13px;
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.1);
+      color: inherit;
+    }
+    .filtros-card .form-control:focus,
+    .filtros-card .form-select:focus {
+      background: rgba(255,255,255,0.08);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+      color: inherit;
+    }
+
+    /* ── Tabela ─────────────────────────── */
+    .vagas-table th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .vagas-table td {
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .codigo-vaga {
+      font-family: monospace;
+      font-size: 12px;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .nome-col {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Paginação ─────────────────────── */
+    .paginacao-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 4px;
+    }
+    .paginacao-info {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    /* ── Loading ─────────────────────── */
+    .loading-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 0;
+      color: #94a3b8;
+    }
+
+    /* ── Busca highlight ─────────────── */
+    mark {
+      background: rgba(59,130,246,0.25);
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+
+      <main class="main-content">
+        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h1>Lista de Vagas</h1>
+            <p>Consulte, filtre e exporte os dados de todas as vagas cadastradas</p>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary fs-6" id="badge-total" style="opacity:0;">0 vagas</span>
+            <button class="btn btn-outline-secondary btn-sm" id="btn-exportar" disabled>
+              <i class="bi bi-download me-1"></i>Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Painel de filtros -->
+        <div class="filtros-card">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4 col-lg-4">
+              <label class="form-label" for="filtro-busca">
+                <i class="bi bi-search me-1"></i>Busca
+              </label>
+              <input type="text" id="filtro-busca" class="form-control" placeholder="Nome, código, matrícula, unidade...">
+            </div>
+            <div class="col-12 col-md-3 col-lg-3">
+              <label class="form-label" for="filtro-empresa">Empresa</label>
+              <select id="filtro-empresa" class="form-select">
+                <option value="">Todas as empresas</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3 col-lg-3">
+              <label class="form-label" for="filtro-situacao">Situação</label>
+              <select id="filtro-situacao" class="form-select">
+                <option value="">Todas as situações</option>
+                <option value="ATIVA">Ativa</option>
+                <option value="AGUARDANDO SUBSTITUIÇÃO">Aguardando Substituição</option>
+                <option value="EM CONTRATAÇÃO">Em Contratação</option>
+                <option value="LICENÇA">Licença</option>
+                <option value="EXTINÇÃO DE VAGA">Extinção de Vaga</option>
+                <option value="RESERVADA">Reservada</option>
+                <option value="LIVRE">Livre</option>
+                <option value="UTILIZADA P/ ADITIVO">Utilizada p/ Aditivo</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-2 col-lg-2">
+              <button class="btn btn-outline-secondary w-100" id="btn-limpar-filtros">
+                <i class="bi bi-x-circle me-1"></i>Limpar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+          <div class="table-wrapper" style="border-radius:12px; overflow:hidden;">
+            <div class="loading-overlay" id="loading-overlay">
+              <div class="spinner-border text-primary mb-3" role="status"></div>
+              <span>Carregando vagas...</span>
+            </div>
+
+            <table class="table table-hover vagas-table" id="tabela-vagas" style="display:none;">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Empresa</th>
+                  <th>Cargo</th>
+                  <th>Situação</th>
+                  <th>Colaborador</th>
+                  <th>Matrícula</th>
+                  <th>Unidade</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-vagas">
+                <!-- Linhas renderizadas pelo JS -->
+              </tbody>
+            </table>
+
+            <div id="sem-resultados" class="text-center text-muted py-5" style="display:none;">
+              <i class="bi bi-search fs-1 mb-3 d-block opacity-25"></i>
+              <p>Nenhuma vaga encontrada com os filtros aplicados.</p>
+            </div>
+          </div>
+
+          <!-- Paginação -->
+          <div class="card-footer" id="paginacao-footer" style="display:none;">
+            <div class="paginacao-bar">
+              <span class="paginacao-info" id="paginacao-info">Exibindo 0–0 de 0</span>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="btn-anterior" disabled>
+                  <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="btn-proxima" disabled>
+                  Próxima <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/assets/js/vagas.js"></script>
+</body>
+</html>

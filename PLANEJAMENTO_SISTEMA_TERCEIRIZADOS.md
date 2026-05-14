@@ -677,14 +677,18 @@ A planilha contém caracteres especiais (ã, ç, é, etc.). O SheetJS lida corre
 ### ETAPA 5 — Listagem de Vagas
 **Duração estimada: 1–2 dias**
 
-- [ ] Criar `vagas.html` e lógica em `vagas.js`
-- [ ] Paginação por cursor (50/página)
-- [ ] Filtros e busca textual client-side
-- [ ] Badges por status
-- [ ] Botões de ação por linha
-- [ ] Botão exportar filtro atual
+> **Decisão arquitetural:** Todas as vagas são carregadas de uma vez (client-side) para garantir busca textual instantânea em toda a base.
 
-**Entregável:** Listagem paginada e filtrável.
+- [ ] Criar `vagas.html` e lógica em `vagas.js`
+- [ ] Carregar todas as vagas do Firestore em memória (getDocs única)
+- [ ] Paginação visual client-side (50/página) com controles Anterior/Próximo
+- [ ] Filtros por Empresa e Situação (client-side, sem nova query)
+- [ ] Busca textual em memória (nome, código, matrícula, unidade)
+- [ ] Badges por status
+- [ ] Botões de ação por linha (Ver Detalhes)
+- [ ] Botão exportar CSV da visão atual (dados filtrados)
+
+**Entregável:** Listagem paginada e filtrável com busca instantânea.
 
 ---
 
