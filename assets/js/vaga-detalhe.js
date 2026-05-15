@@ -1,11 +1,10 @@
 import { checkAuth } from "./auth.js";
 import { renderLayout, setPageTitle, renderCacheStatus } from "./layout.js";
-import { badgeSituacao, formatarDataHora, showToast } from "./utils.js";
-import { getVagaById, getCargosMap, getEmpresasMap, invalidateVagas } from "./firestore-cache.js";
-import { cacheGet } from "./cache.js";
 import { db } from "./firebase-config.js";
+import { badgeSituacao, showToast } from "./utils.js";
+import { cacheGet } from "./cache.js";
 import {
-  doc, getDocs, collection, query,
+  doc, getDoc, getDocs, collection, query,
   orderBy, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
@@ -32,7 +31,7 @@ const acoesEl    = document.getElementById("acoes-header");
 const timelineEl = document.getElementById("timeline-eventos");
 const badgeEv    = document.getElementById("badge-eventos");
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Helper ────────────────────────────────────────────────────
 function setVal(id, valor) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -43,27 +42,62 @@ function setVal(id, valor) {
   }
 }
 
-// ── 1. Carregar dados via cache (sem leituras extras) ─────────
+// ── 1. Carregar dados ─────────────────────────────────────────
+// Tenta ler vaga do cache de lista (se vier de vagas.html, 0 leituras extras).
+// Para cargos e empresas usa o sessionStorage se disponível.
+// Caso contrário faz as queries diretas ao Firestore (comportamento original).
 let vagaData;
 try {
-  // Verifica cache ANTES de buscar
-  const foiCacheHit = !!(cacheGet("vagas") && cacheGet("cargos") && cacheGet("empresas"));
+  // Detecta cache hit ANTES de buscar (para o indicador visual)
+  const vagasCache  = cacheGet("vagas");
+  const cargosCache = cacheGet("cargos");
+  const empresasCache = cacheGet("empresas");
+  const foiCacheHit = !!(vagasCache && cargosCache && empresasCache);
 
-  // getVagaById lê do cache de vagas se disponível (0 reads adicionais)
-  // getCargosMap e getEmpresasMap idem
-  const [vaga, cargosMap, empresasMap] = await Promise.all([
-    getVagaById(vagaId),
-    getCargosMap(),
-    getEmpresasMap()
-  ]);
+  // ── Vaga: do cache de lista ou leitura direta ─────────────
+  let vagaObj = null;
+  if (vagasCache) {
+    vagaObj = vagasCache.find(v => v.id === vagaId) ?? null;
+  }
+  if (!vagaObj) {
+    // Fallback: leitura direta (como o original)
+    const vagaSnap = await getDoc(doc(db, "vagas", vagaId));
+    if (vagaSnap.exists()) {
+      vagaObj = { id: vagaSnap.id, ...vagaSnap.data() };
+    }
+  }
 
-  if (!vaga) {
+  if (!vagaObj) {
     showToast("Vaga não encontrada.", "danger");
     setTimeout(() => window.location.href = "/vagas.html", 2000);
     throw new Error("Vaga não encontrada");
   }
+  vagaData = vagaObj;
 
-  vagaData = vaga;
+  // ── Cargos: do cache ou query ─────────────────────────────
+  const cargosMap = {};
+  if (cargosCache) {
+    cargosCache.forEach(c => {
+      const desc = (c.descricao ?? "").replace(/^[^-]+-\s*/, "").trim().toUpperCase();
+      cargosMap[c.id] = desc || (c.descricao ?? "").toUpperCase();
+    });
+  } else {
+    const snap = await getDocs(collection(db, "cargos"));
+    snap.docs.forEach(d => {
+      const c = d.data();
+      const desc = (c.descricao ?? "").replace(/^[^-]+-\s*/, "").trim().toUpperCase();
+      cargosMap[d.id] = desc || (c.descricao ?? "").toUpperCase();
+    });
+  }
+
+  // ── Empresas: do cache ou query ───────────────────────────
+  const empresasMap = {};
+  if (empresasCache) {
+    empresasCache.forEach(e => { empresasMap[e.id] = (e.nome ?? e.id).toUpperCase(); });
+  } else {
+    const snap = await getDocs(collection(db, "empresas"));
+    snap.docs.forEach(d => { empresasMap[d.id] = (d.data().nome ?? d.id).toUpperCase(); });
+  }
 
   // ── 2. Preencher campos ────────────────────────────────────
   document.getElementById("titulo-vaga").textContent = vagaData.codigoVaga ?? "Vaga";
@@ -138,8 +172,11 @@ try {
         });
         await batch.commit();
 
-        // Invalida cache de vagas pois uma foi removida
-        invalidateVagas();
+        // Invalida cache de vagas
+        try {
+          const { invalidateVagas } = await import("./firestore-cache.js");
+          invalidateVagas();
+        } catch (_) { /* noop */ }
 
         showToast("Vaga inativada com sucesso.", "success");
         setTimeout(() => window.location.href = "/vagas.html", 1500);
@@ -166,8 +203,7 @@ try {
   }
 }
 
-// ── 4. Carregar Timeline — sempre do Firestore (dados em tempo real) ──
-// Eventos são uma subcoleção específica da vaga, não faz sentido cachear.
+// ── 4. Carregar Timeline — sempre do Firestore ────────────────
 try {
   const eventosSnap = await getDocs(query(
     collection(db, "vagas", vagaId, "eventos"),

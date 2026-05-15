@@ -1,5 +1,4 @@
 import { logout } from "./auth.js";
-import { cacheGet, cacheInvalidateAll } from "./cache.js";
 
 /**
  * Injeta o layout padrão (header + sidebar) na página.
@@ -220,7 +219,10 @@ function renderCacheStatus(cacheHit, chavesCacheadas = []) {
     }
 
     function refreshAll() {
-      cacheInvalidateAll();
+      // Limpa todo o cache SGT do sessionStorage diretamente (sem depender do módulo)
+      Object.keys(sessionStorage)
+        .filter(k => k.startsWith("sgt_cache_"))
+        .forEach(k => sessionStorage.removeItem(k));
       window.location.reload();
     }
 
