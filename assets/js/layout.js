@@ -52,6 +52,11 @@ function renderLayout(paginaAtiva, dadosUsuario) {
       ${isAdmin ? `
       <li class="menu-label">Administração</li>
       <li>
+        <a href="/unidades.html" class="${paginaAtiva === 'unidades' ? 'active' : ''}">
+          <i class="bi bi-building-fill-gear"></i> Unidades
+        </a>
+      </li>
+      <li>
         <a href="/usuarios.html" class="${paginaAtiva === 'usuarios' ? 'active' : ''}">
           <i class="bi bi-person-fill-gear"></i> Usuários
         </a>
@@ -113,6 +118,9 @@ function renderLayout(paginaAtiva, dadosUsuario) {
   document.getElementById("sidebar-toggle").addEventListener("click", () => {
     document.getElementById("sidebar").classList.toggle("open");
   });
+
+  // Mostra o app-shell
+  document.body.classList.add("layout-ready");
 }
 
 /**

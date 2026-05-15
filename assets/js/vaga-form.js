@@ -5,7 +5,7 @@ import { gerarIdVaga, showToast } from "./utils.js";
 import { getEmpresas, getCargos, getVagaById, invalidateVagas } from "./firestore-cache.js";
 import { cacheGet } from "./cache.js";
 import {
-  doc, collection,
+  doc, collection, getDocs,
   writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
@@ -53,16 +53,22 @@ const fObsNova     = document.getElementById("f-obs-nova");
 const loadingEl = document.getElementById("loading-form");
 const formEl    = document.getElementById("form-vaga");
 
+const fUnidadeSelect = document.getElementById("f-unidade-select");
+
 try {
   // Ambas as coleções são cacheadas por 1h — verifica antes de buscar
   const foiCacheHit = !!(cacheGet("empresas") && cacheGet("cargos"));
 
-  const [empresas, cargos] = await Promise.all([
+  const [empresas, cargos, snapUnidades] = await Promise.all([
     getEmpresas(),
-    getCargos()
+    getCargos(),
+    getDocs(collection(db, "unidades"))
   ]);
 
   todosCargos = cargos;
+  const unidades = snapUnidades.docs.map(d => ({ id: d.id, ...d.data() }));
+  unidades.sort((a, b) => a.sigla.localeCompare(b.sigla));
+  window.unidadesCarregadas = unidades;
 
   // Popula select de empresas
   empresas.forEach(e => {
@@ -70,6 +76,34 @@ try {
     opt.value = e.id;
     opt.textContent = (e.nome ?? e.id).toUpperCase();
     fEmpresa.appendChild(opt);
+  });
+
+  // Popula select de unidades
+  unidades.forEach(u => {
+    if (u.ativo === false && !modoEdicao) return; // Oculta inativas para vagas novas
+    const opt = document.createElement("option");
+    opt.value = u.id; // Id (geralmente sigla)
+    opt.textContent = `${u.sigla} - ${u.nome}`;
+    fUnidadeSelect.appendChild(opt);
+  });
+
+  fUnidadeSelect.addEventListener("change", () => {
+    const u = window.unidadesCarregadas.find(x => x.id === fUnidadeSelect.value);
+    if (u) {
+      fHierarquia.value  = u.hierarquia || "";
+      fSigla.value       = u.sigla || "";
+      fUnidade.value     = u.nome || "";
+      fLocalidade.value  = u.localidade || "";
+      fResponsavel.value = u.responsavel || "";
+      fEmail.value       = u.email || "";
+    } else {
+      fHierarquia.value  = "";
+      fSigla.value       = "";
+      fUnidade.value     = "";
+      fLocalidade.value  = "";
+      fResponsavel.value = "";
+      fEmail.value       = "";
+    }
   });
 
   // ── 2. Carregar dados da vaga (modo edição) ───────────────────
@@ -89,6 +123,15 @@ try {
     fSituacao.value   = dadosOriginais.situacao              ?? "";
     fNome.value       = dadosOriginais.nomeColaborador        ?? "";
     fMatricula.value  = dadosOriginais.matriculaColaborador   ?? "";
+    
+    // Tenta setar a unidade selecionada com base na sigla
+    if (dadosOriginais.unidadeSigla) {
+      const siglaId = dadosOriginais.unidadeSigla.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+      if (Array.from(fUnidadeSelect.options).some(opt => opt.value === siglaId)) {
+        fUnidadeSelect.value = siglaId;
+      }
+    }
+
     fHierarquia.value = dadosOriginais.hierarquia            ?? "";
     fSigla.value      = dadosOriginais.unidadeSigla          ?? "";
     fUnidade.value    = dadosOriginais.unidadeNome           ?? "";

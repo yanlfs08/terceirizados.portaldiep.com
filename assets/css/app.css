@@ -45,10 +45,35 @@ html, body {
 a { text-decoration: none; color: inherit; }
 
 /* ── Layout Shell ──────────────────────────────────────────── */
+body::before {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid rgba(59,130,246,0.2);
+  border-top-color: var(--clr-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 9999;
+}
+body.layout-ready::before {
+  display: none;
+}
+
 .app-shell {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+body.layout-ready .app-shell {
+  opacity: 1;
+  visibility: visible;
 }
 
 .main-wrapper {
@@ -651,3 +676,29 @@ a { text-decoration: none; color: inherit; }
   position: relative;
 }
 
+/* ── Modals Dark Theme ────────────────────────────────────────── */
+.modal-content .form-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+.modal-content .form-control,
+.modal-content .form-select {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff !important;
+}
+.modal-content .form-control:focus,
+.modal-content .form-select:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--clr-accent);
+  color: #ffffff !important;
+}
+.modal-content .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+.modal-content .form-text,
+.modal-content .text-muted {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+.modal-content .form-check-label {
+  color: rgba(255, 255, 255, 0.85);
+}

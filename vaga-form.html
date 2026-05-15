@@ -178,40 +178,35 @@
                   <div class="form-section-label"><i class="bi bi-building me-1"></i>Lotação</div>
                   <div class="row g-3">
                     <div class="col-12">
+                      <label class="form-label" for="f-unidade-select">Unidade <span class="required-star">*</span></label>
+                      <select id="f-unidade-select" class="form-select" required>
+                        <option value="">Selecione a unidade...</option>
+                      </select>
+                      <div class="invalid-feedback">Selecione a unidade.</div>
+                    </div>
+                    <div class="col-12">
                       <label class="form-label" for="f-hierarquia">Hierarquia</label>
-                      <input type="text" id="f-hierarquia" class="form-control" placeholder="Ex: SMSA | SUOGF | DLOS | GCOSE">
+                      <input type="text" id="f-hierarquia" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                     <div class="col-4">
                       <label class="form-label" for="f-sigla">Sigla da Unidade</label>
-                      <input type="text" id="f-sigla" class="form-control" placeholder="Ex: GCOSE">
+                      <input type="text" id="f-sigla" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                     <div class="col-8">
                       <label class="form-label" for="f-unidade">Nome Completo da Unidade</label>
-                      <input type="text" id="f-unidade" class="form-control" placeholder="Ex: Gerência de Contratação...">
+                      <input type="text" id="f-unidade" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                     <div class="col-12 col-sm-6">
                       <label class="form-label" for="f-localidade">Localidade</label>
-                      <select id="f-localidade" class="form-select">
-                        <option value="">Selecione...</option>
-                        <option value="NÍVEL CENTRAL">Nível Central</option>
-                        <option value="BARREIRO">Barreiro</option>
-                        <option value="CENTRO-SUL">Centro-Sul</option>
-                        <option value="LESTE">Leste</option>
-                        <option value="NORDESTE">Nordeste</option>
-                        <option value="NORTE">Norte</option>
-                        <option value="NOROESTE">Noroeste</option>
-                        <option value="OESTE">Oeste</option>
-                        <option value="PAMPULHA">Pampulha</option>
-                        <option value="VENDA NOVA">Venda Nova</option>
-                      </select>
+                      <input type="text" id="f-localidade" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                     <div class="col-12 col-sm-6">
                       <label class="form-label" for="f-responsavel">Responsável</label>
-                      <input type="text" id="f-responsavel" class="form-control" placeholder="Nome do gestor">
+                      <input type="text" id="f-responsavel" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                     <div class="col-12">
                       <label class="form-label" for="f-email">E-mail da Unidade</label>
-                      <input type="email" id="f-email" class="form-control" placeholder="email@pbh.gov.br">
+                      <input type="email" id="f-email" class="form-control" placeholder="Preenchimento automático" readonly>
                     </div>
                   </div>
                 </div>
