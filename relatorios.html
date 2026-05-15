@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios — SGT DIEP</title>
+  <meta name="description" content="Exportação e relatórios de vagas — SGT DIEP">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    .filtro-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius:12px; padding:20px; margin-bottom:24px; }
+    .filtro-card .form-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:4px; }
+    .rel-table th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b; padding:10px 12px; }
+    .rel-table td { padding:9px 12px; font-size:12px; vertical-align:middle; }
+    .rel-table tr:hover { background: rgba(59,130,246,0.04); }
+    .stat-card { background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px 20px; text-align:center; }
+    .stat-card .num { font-size:28px; font-weight:700; color:#3b82f6; }
+    .stat-card .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-top:2px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+      <main class="main-content">
+
+        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+          <div>
+            <h1 class="mb-1">Relatórios</h1>
+            <p class="text-muted mb-0" style="font-size:13px;">Filtre e exporte dados de vagas</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-export-csv" disabled>
+              <i class="bi bi-filetype-csv me-1"></i>CSV
+            </button>
+            <button class="btn btn-success btn-sm" id="btn-export-xlsx" disabled>
+              <i class="bi bi-file-earmark-excel-fill me-1"></i>Exportar XLSX
+            </button>
+          </div>
+        </div>
+
+        <div class="filtro-card">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6 col-lg-3">
+              <label class="form-label">Empresa</label>
+              <select class="form-select form-select-sm" id="f-empresa"><option value="">Todas</option></select>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+              <label class="form-label">Situação</label>
+              <select class="form-select form-select-sm" id="f-situacao">
+                <option value="">Todas</option>
+                <option>ATIVA</option><option>LIVRE</option><option>LICENÇA</option>
+                <option>EM CONTRATAÇÃO</option><option>AGUARDANDO SUBSTITUIÇÃO</option>
+                <option>EXTINÇÃO DE VAGA</option><option>RESERVADA</option>
+                <option>UTILIZADA P/ ADITIVO</option>
+              </select>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-2">
+              <label class="form-label">Localidade</label>
+              <select class="form-select form-select-sm" id="f-localidade"><option value="">Todas</option></select>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-2">
+              <label class="form-label">Unidade (sigla)</label>
+              <input type="text" class="form-control form-control-sm" id="f-sigla" placeholder="ex: GEMAN">
+            </div>
+            <div class="col-12 col-lg-2 d-flex align-items-end">
+              <button class="btn btn-outline-secondary btn-sm w-100" id="btn-limpar-rel">
+                <i class="bi bi-x-circle me-1"></i>Limpar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3"><div class="stat-card"><div class="num" id="stat-total">—</div><div class="lbl">Total filtrado</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat-card"><div class="num text-success" id="stat-ativas">—</div><div class="lbl">Ativas</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat-card"><div class="num text-warning" id="stat-livres">—</div><div class="lbl">Livres / Aguardando</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat-card"><div class="num text-danger" id="stat-criticas">—</div><div class="lbl">Críticas</div></div></div>
+        </div>
+
+        <div id="loading-rel" class="text-center py-5">
+          <div class="spinner-border text-primary mb-3" role="status"></div>
+          <p class="text-muted">Carregando vagas...</p>
+        </div>
+
+        <div id="painel-rel" style="display:none;">
+          <p class="text-muted mb-2" style="font-size:13px;" id="rel-info">—</p>
+          <div class="card">
+            <div class="card-body p-0" style="max-height:500px; overflow-y:auto;">
+              <table class="table rel-table mb-0">
+                <thead style="position:sticky;top:0;background:#1e293b;z-index:1;">
+                  <tr>
+                    <th>Código</th><th>Empresa</th><th>Cargo</th><th>Situação</th>
+                    <th>Colaborador</th><th>Matrícula</th><th>Unidade</th><th>Localidade</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-rel"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script type="module" src="/assets/js/relatorios.js"></script>
+</body>
+</html>

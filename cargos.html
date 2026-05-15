@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargos e Empresas — SGT DIEP</title>
+  <meta name="description" content="Gestão de cargos e empresas de terceirizados — SGT DIEP">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    .nav-tabs-custom { border-bottom: 2px solid rgba(255,255,255,0.08); margin-bottom: 20px; }
+    .nav-tabs-custom .nav-link {
+      color: #94a3b8; font-size: 13px; font-weight: 600; border: none;
+      padding: 10px 20px; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .nav-tabs-custom .nav-link:hover { color: #e2e8f0; }
+    .nav-tabs-custom .nav-link.active { color: #3b82f6; border-bottom-color: #3b82f6; background: none; }
+
+    .admin-table th {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #64748b; padding: 10px 14px;
+    }
+    .admin-table td { padding: 10px 14px; font-size: 13px; vertical-align: middle; }
+    .admin-table tr:hover { background: rgba(59,130,246,0.04); }
+
+    .badge-empresa {
+      background: rgba(59,130,246,0.12); color: #3b82f6;
+      border: 1px solid rgba(59,130,246,0.2);
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+    }
+    .modal-content { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
+    .modal-header { border-bottom-color: rgba(255,255,255,0.08); }
+    .modal-footer { border-top-color: rgba(255,255,255,0.08); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="layout-sidebar"></div>
+    <div class="main-wrapper">
+      <div id="layout-header"></div>
+      <main class="main-content">
+
+        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+          <div>
+            <h1 class="mb-1">Cargos e Empresas</h1>
+            <p class="text-muted mb-0" style="font-size:13px;">Gestão do cadastro de empresas e cargos terceirizados</p>
+          </div>
+          <div id="btn-novo-container"></div>
+        </div>
+
+        <!-- Abas -->
+        <ul class="nav nav-tabs-custom" id="abas">
+          <li class="nav-item">
+            <button class="nav-link active" data-aba="empresas">
+              <i class="bi bi-building me-1"></i>Empresas
+              <span class="badge bg-secondary ms-1" id="badge-empresas">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-aba="cargos">
+              <i class="bi bi-briefcase me-1"></i>Cargos
+              <span class="badge bg-secondary ms-1" id="badge-cargos">0</span>
+            </button>
+          </li>
+        </ul>
+
+        <!-- Loading -->
+        <div id="loading-cargos" class="text-center py-5">
+          <div class="spinner-border text-primary mb-3" role="status"></div>
+          <p class="text-muted">Carregando dados...</p>
+        </div>
+
+        <!-- Painel Empresas -->
+        <div id="painel-empresas" style="display:none;">
+          <div class="card">
+            <div class="card-body p-0">
+              <table class="table admin-table mb-0" id="tabela-empresas">
+                <thead>
+                  <tr>
+                    <th>ID / Código</th>
+                    <th>Nome da Empresa</th>
+                    <th>Vagas</th>
+                    <th style="width:100px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-empresas"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel Cargos -->
+        <div id="painel-cargos" style="display:none;">
+          <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+            <select class="form-select form-select-sm" id="filtro-cargo-empresa" style="max-width:260px;">
+              <option value="">Todas as empresas</option>
+            </select>
+            <input type="search" class="form-control form-control-sm" id="busca-cargo"
+              placeholder="Buscar cargo..." style="max-width:260px;">
+          </div>
+          <div class="card">
+            <div class="card-body p-0">
+              <table class="table admin-table mb-0" id="tabela-cargos">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Empresa</th>
+                    <th style="width:100px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-cargos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Empresa -->
+  <div class="modal fade" id="modal-empresa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-empresa-titulo">Nova Empresa</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">ID / Código *</label>
+            <input type="text" class="form-control" id="emp-id" placeholder="ex: ART3" required>
+            <div class="form-text">Identificador único. Não pode ser alterado depois.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Nome *</label>
+            <input type="text" class="form-control" id="emp-nome" placeholder="ex: ARTEBRILHO" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="btn-salvar-empresa">
+            <i class="bi bi-floppy-fill me-1"></i>Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cargo -->
+  <div class="modal fade" id="modal-cargo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-cargo-titulo">Novo Cargo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Empresa *</label>
+            <select class="form-select" id="cargo-empresa" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Código *</label>
+            <input type="text" class="form-control" id="cargo-codigo" placeholder="ex: CARGO 01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Descrição *</label>
+            <input type="text" class="form-control" id="cargo-descricao" placeholder="ex: CARGO 01 - ALMOXARIFE" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="btn-salvar-cargo">
+            <i class="bi bi-floppy-fill me-1"></i>Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/assets/js/cargos.js"></script>
+</body>
+</html>
