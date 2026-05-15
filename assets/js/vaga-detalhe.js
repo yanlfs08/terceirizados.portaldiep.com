@@ -203,51 +203,53 @@ try {
   }
 }
 
-// ── 4. Carregar Timeline — sempre do Firestore ────────────────
-try {
-  const eventosSnap = await getDocs(query(
-    collection(db, "vagas", vagaId, "eventos"),
-    orderBy("registradoEm", "desc")
-  ));
+// ── 4. Carregar Timeline — sempre do Firestore ────────────
+(async () => {
+  try {
+    const eventosSnap = await getDocs(query(
+      collection(db, "vagas", vagaId, "eventos"),
+      orderBy("registradoEm", "desc")
+    ));
 
-  badgeEv.textContent = eventosSnap.size;
+    badgeEv.textContent = eventosSnap.size;
 
-  if (eventosSnap.empty) {
-    timelineEl.innerHTML = `
-      <div class="timeline-empty">
-        <i class="bi bi-clock-history fs-2 mb-2 d-block opacity-25"></i>
-        Nenhum evento registrado.<br>
-        <small>O histórico cresce a partir das próximas edições.</small>
-      </div>`;
-    return;
+    if (eventosSnap.empty) {
+      timelineEl.innerHTML = `
+        <div class="timeline-empty">
+          <i class="bi bi-clock-history fs-2 mb-2 d-block opacity-25"></i>
+          Nenhum evento registrado.<br>
+          <small>O histórico cresce a partir das próximas edições.</small>
+        </div>`;
+      return;
+    }
+
+    const iconePorTipo = {
+      "CRIACAO":        { cls: "dot-criacao",      icon: "bi-plus-lg" },
+      "EDICAO":         { cls: "dot-edicao",        icon: "bi-pencil" },
+      "STATUS_ALTERADO":{ cls: "dot-status",        icon: "bi-arrow-left-right" },
+      "SUBSTITUICAO":   { cls: "dot-substituicao",  icon: "bi-person-fill-gear" },
+      "INATIVACAO":     { cls: "dot-outros",        icon: "bi-trash3" }
+    };
+
+    timelineEl.innerHTML = eventosSnap.docs.map(d => {
+      const ev = d.data();
+      const meta = iconePorTipo[ev.tipoEvento] ?? { cls: "dot-outros", icon: "bi-circle" };
+      const dataStr = ev.registradoEm?.toDate
+        ? ev.registradoEm.toDate().toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" })
+        : "—";
+
+      return `
+        <div class="timeline-item">
+          <div class="timeline-dot ${meta.cls}">
+            <i class="bi ${meta.icon}"></i>
+          </div>
+          <div class="timeline-data">${dataStr}</div>
+          <div class="timeline-desc">${ev.descricao ?? "—"}</div>
+          <div class="timeline-usuario"><i class="bi bi-person me-1"></i>${ev.nomeUsuario ?? "—"}</div>
+        </div>`;
+    }).join("");
+
+  } catch (err) {
+    if (timelineEl) timelineEl.innerHTML = `<p class="text-danger small">Erro ao carregar eventos: ${err.message}</p>`;
   }
-
-  const iconePorTipo = {
-    "CRIACAO":        { cls: "dot-criacao",      icon: "bi-plus-lg" },
-    "EDICAO":         { cls: "dot-edicao",        icon: "bi-pencil" },
-    "STATUS_ALTERADO":{ cls: "dot-status",        icon: "bi-arrow-left-right" },
-    "SUBSTITUICAO":   { cls: "dot-substituicao",  icon: "bi-person-fill-gear" },
-    "INATIVACAO":     { cls: "dot-outros",        icon: "bi-trash3" }
-  };
-
-  timelineEl.innerHTML = eventosSnap.docs.map(d => {
-    const ev = d.data();
-    const meta = iconePorTipo[ev.tipoEvento] ?? { cls: "dot-outros", icon: "bi-circle" };
-    const dataStr = ev.registradoEm?.toDate
-      ? ev.registradoEm.toDate().toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" })
-      : "—";
-
-    return `
-      <div class="timeline-item">
-        <div class="timeline-dot ${meta.cls}">
-          <i class="bi ${meta.icon}"></i>
-        </div>
-        <div class="timeline-data">${dataStr}</div>
-        <div class="timeline-desc">${ev.descricao ?? "—"}</div>
-        <div class="timeline-usuario"><i class="bi bi-person me-1"></i>${ev.nomeUsuario ?? "—"}</div>
-      </div>`;
-  }).join("");
-
-} catch (err) {
-  timelineEl.innerHTML = `<p class="text-danger small">Erro ao carregar eventos: ${err.message}</p>`;
-}
+})();
